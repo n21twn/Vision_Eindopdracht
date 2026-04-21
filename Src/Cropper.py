@@ -3,7 +3,7 @@ import cv2
 import numpy as np
 import yaml
 
-# === PADEN ===
+
 # Relatief aan de src/ map waar dit script staat
 BASE_DIR    = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # Root
 YAML_PATH   = os.path.join(BASE_DIR, "Dataset2", "data.yaml")
@@ -11,7 +11,7 @@ IMAGE_DIR   = os.path.join(BASE_DIR, "Dataset2", "train", "images")
 LABEL_DIR   = os.path.join(BASE_DIR, "Dataset2", "train", "labels")
 OUTPUT_DIR  = os.path.join(BASE_DIR, "object_crops")
 
-# === CONFIGURATIE ===
+
 TARGET_SIZE   = 224   # 224px voor Transfer Learning (bijv. MobileNetV2)
 PADDING_COLOR = 128   # Middengrijs
 
@@ -84,26 +84,26 @@ def process_dataset(image_dir, label_dir, output_dir, class_names):
     for img_name in image_files:
         # Zoek het bijbehorende .txt label-bestand
         label_name = os.path.splitext(img_name)[0] + ".txt"
-        label_path = os.path.join(label_dir, label_name)
+        label_path = os.path.join(label_dir, label_name) # zet de naam van de afbeelding om naar de naam van het labelbestand
 
         if not os.path.exists(label_path):
             skipped += 1
             continue
 
-        image = cv2.imread(os.path.join(image_dir, img_name))
+        image = cv2.imread(os.path.join(image_dir, img_name)) # lees de afbeelding in met OpenCV
         if image is None:
             skipped += 1
             continue
 
-        with open(label_path, 'r') as f:
-            lines = f.readlines()
+        with open(label_path, 'r') as f: # lees het labelbestand
+            lines = f.readlines() # elke regel in het labelbestand bevat de informatie over één object in de afbeelding
 
-        for i, line in enumerate(lines):
-            line = line.strip()
+        for i, line in enumerate(lines): #
+            line = line.strip() # verwijder eventuele witruimte aan het begin en einde van de regel
             if not line:
                 continue
 
-            data     = list(map(float, line.split()))
+            data     = list(map(float, line.split())) # splits de regel op spaties en zet elk deel om naar een float (class_id, x_center, y_center, width, height)
             class_id = int(data[0])
 
             # Klassenaam ophalen uit yaml; val terug op het nummer als het niet bestaat
