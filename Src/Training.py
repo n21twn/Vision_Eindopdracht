@@ -1,4 +1,7 @@
 import os
+import numpy as np
+import cv2
+import matplotlib.pyplot as plt
 import tensorflow as tf
 ImageDataGenerator = tf.keras.preprocessing.image.ImageDataGenerator
 from tensorflow.keras.applications import MobileNetV2
@@ -10,13 +13,41 @@ from tensorflow.keras.layers import Dense, GlobalAveragePooling2D, Dropout
 BASE_DIR  = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SPLIT_DIR = os.path.join(BASE_DIR, "object_crops_split")
  
-# MobileNetV2 verwacht 224x224 plaatjes
 IMG_SIZE   = 224
 BATCH_SIZE = 32
- 
+
+def canny_combinatie(img):
+    # img komt binnen als float32 tussen 0-255
+    img_uint8 = img.astype(np.uint8)
+    gray      = cv2.cvtColor(img_uint8, cv2.COLOR_RGB2GRAY)
+    canny     = cv2.Canny(gray, threshold1=50, threshold2=150)
+    
+    # canny naar 3 kanalen
+    canny_3k  = np.stack([canny, canny, canny], axis=-1)
+    
+    # normaliseren en combineren
+    origineel    = img / 255.0
+    canny_norm   = canny_3k.astype(np.float32) / 255.0
+    gecombineerd = np.clip(origineel + 0.5 * canny_norm, 0, 1)
+    
+    return gecombineerd
+
+
+# MobileNetV2 verwacht 224x224 plaatjes
+
+
+# dan in je ImageDataGenerator:
 # pixel waardes normaliseren van 0-255 naar 0-1, dit werkt beter voor neurale netwerken
-train_gen = ImageDataGenerator(rescale=1./255)
-val_gen   = ImageDataGenerator(rescale=1./255)
+train_gen = ImageDataGenerator(
+    preprocessing_function=canny_combinatie,
+    rotation_range=10,       # kleine rotatie want kaarten staan meestal rechtop
+    width_shift_range=0.05,  # kleine verschuiving
+    height_shift_range=0.05,
+    zoom_range=0.05,         # kleine zoom
+    horizontal_flip=False    # Voorkom spiegeling want letter J K en Q zijn niet symmetrisch
+    )
+
+val_gen = ImageDataGenerator(preprocessing_function=canny_combinatie)
  
 # plaatjes laden vanuit de mappen, keras pakt automatisch de mapnaam als klassenaam
 train_data = train_gen.flow_from_directory(
@@ -77,4 +108,7 @@ history = model.fit(
     epochs=10,
     verbose=1
 )
- 
+
+
+model.save(os.path.join(BASE_DIR, "model_met_filters.keras"))
+print("Model opgeslagen!")
