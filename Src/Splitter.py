@@ -13,7 +13,7 @@ OUTPUT_DIR = os.path.join(BASE_DIR, "object_crops_split")
 # 70% train, 20% validatie, 10% test
 RATIO = (0.7, 0.2, 0.1)
 SEED  = 1  # Zelfde seed = zelfde split, voor als na gemaakt moet worden.
-MAX_PER_KLASSE = 200
+MAX_PER_KLASSE= 535
 
 
 

@@ -38,8 +38,9 @@ def canny_combinatie(img):
 
 # dan in je ImageDataGenerator:
 # pixel waardes normaliseren van 0-255 naar 0-1, dit werkt beter voor neurale netwerken
+# preprocessing_function=canny_combinatie
 train_gen = ImageDataGenerator(
-    preprocessing_function=canny_combinatie,
+    rescale=1./255,
     rotation_range=10,       # kleine rotatie want kaarten staan meestal rechtop
     width_shift_range=0.05,  # kleine verschuiving
     height_shift_range=0.05,
@@ -47,7 +48,7 @@ train_gen = ImageDataGenerator(
     horizontal_flip=False    # Voorkom spiegeling want letter J K en Q zijn niet symmetrisch
     )
 
-val_gen = ImageDataGenerator(preprocessing_function=canny_combinatie)
+val_gen = ImageDataGenerator(rescale=1./255)
  
 # plaatjes laden vanuit de mappen, keras pakt automatisch de mapnaam als klassenaam
 train_data = train_gen.flow_from_directory(
@@ -105,10 +106,11 @@ print(model.summary())
 history = model.fit(
     train_data,
     validation_data=val_data,
-    epochs=10,
+    epochs=20,
     verbose=1
 )
 
 
 model.save(os.path.join(BASE_DIR, "model_met_filters.keras"))
 print("Model opgeslagen!")
+
