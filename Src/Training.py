@@ -111,6 +111,6 @@ history = model.fit(
 )
 
 
-model.save(os.path.join(BASE_DIR, "model_met_filters.keras"))
+model.save(os.path.join(BASE_DIR, "model_zonder_filters.keras"))
 print("Model opgeslagen!")
 

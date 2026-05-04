@@ -5,15 +5,17 @@ import random
 import shutil
 
 BASE_DIR   = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # Root
-INPUT_DIR  = os.path.join(BASE_DIR, "object_crops")
+# INPUT_DIR  = os.path.join(BASE_DIR, "object_crops")
+INPUT_DIR  = os.path.join(BASE_DIR, "object_crops_2")  # map met alle plaatjes, gesorteerd in submappen per klasse
 TEMP_DIR   = os.path.join(BASE_DIR, "object_crops_temp")  # tijdelijke map met max plaatjes
-OUTPUT_DIR = os.path.join(BASE_DIR, "object_crops_split")
+# OUTPUT_DIR = os.path.join(BASE_DIR, "object_crops_split")
+OUTPUT_DIR = os.path.join(BASE_DIR, "object_crops_split_2")
 
 
 # 70% train, 20% validatie, 10% test
 RATIO = (0.7, 0.2, 0.1)
 SEED  = 1  # Zelfde seed = zelfde split, voor als na gemaakt moet worden.
-MAX_PER_KLASSE= 535
+MAX_PER_KLASSE= 100
 
 
 
