@@ -2,126 +2,91 @@ import os
 import cv2
 import numpy as np
 import yaml
-import random
 
-# paden
-BASE_DIR    = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-YAML_PATH   = os.path.join(BASE_DIR, "Dataset2", "data.yaml")
-IMAGE_DIR   = os.path.join(BASE_DIR, "Dataset2", "train", "images")
-LABEL_DIR   = os.path.join(BASE_DIR, "Dataset2", "train", "labels")
-OUTPUT_DIR  = os.path.join(BASE_DIR, "object_crops")
 
-TARGET_SIZE = 224
+BASE_DIR    = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # Root van het project
+YAML_PATH   = os.path.join(BASE_DIR, "Dataset2", "data.yaml")              # YOLO class namen
+IMAGE_DIR   = os.path.join(BASE_DIR, "Dataset2", "train", "images")        # Bronafbeeldingen
+LABEL_DIR   = os.path.join(BASE_DIR, "Dataset2", "train", "labels")        # YOLO annotaties (.txt)
+OUTPUT_DIR  = os.path.join(BASE_DIR, "object_crops_2")                     # Output map per klasse
 
+TARGET_SIZE = 224  # MobileNetV2 verwacht 224x224 pixels
 
 def load_class_names(yaml_path):
-    """laad de klassenamen uit data.yaml"""
+    """Laadt de klassenamen uit het YOLO data.yaml bestand (bijv. ['AC', 'AD', 'QS', ...])"""
     with open(yaml_path, 'r') as f:
         data = yaml.safe_load(f)
     return data['names']
 
-
-def crop_and_padding(image, yolo_bbox, target_size=224):
-    """knip één object uit een afbeelding op basis van een YOLO bounding box
-    en plaats het gecentreerd in een vierkant met random gekleurde padding.
-    random padding zorgt dat het model niet leert dat een specifieke kleur = achtergrond"""
+def crop_and_resize(image, yolo_bbox, target_size=224):
+    """
+    Snijdt één object uit de afbeelding op basis van een YOLO bounding box
+    en schaalt het direct naar target_size x target_size pixels.
+    https://bboxconverter.readthedocs.io/en/latest/explanation/bounding_box_ultimate_guide.html 
+    """
     h_img, w_img, _ = image.shape
 
-    # yolo geeft alles als percentage van de afbeelding → terugrekenen naar pixels
+    # Zet  YOLO coördinaten om naar pixels
     _, x_ptr, y_ptr, w_ptr, h_ptr = yolo_bbox
     w        = int(w_ptr * w_img)
     h        = int(h_ptr * h_img)
     x_center = int(x_ptr * w_img)
     y_center = int(y_ptr * h_img)
 
-    # hoekpunten berekenen met randbeveiliging aan beide kanten
-    x1 = max(0,     x_center - (w // 2))
-    y1 = max(0,     y_center - (h // 2))
+    # Bereken de hoekpunten van de bounding box
+    x1 = max(0, x_center - (w // 2))
+    y1 = max(0, y_center - (h // 2))
     x2 = min(w_img, x1 + w)
     y2 = min(h_img, y1 + h)
 
+    # Uitsnijden
     cropped = image[y1:y2, x1:x2]
+    if cropped.size == 0:
+        return None  # Sla lege crops over
 
-    # veiligheidscheck: lege crop overslaan
-    if cropped.size == 0 or w == 0 or h == 0:
-        return None
-
-    # schalen met behoud van verhoudingen
-    scale = target_size / max(x2 - x1, y2 - y1)
-    new_w = int((x2 - x1) * scale)
-    new_h = int((y2 - y1) * scale)
-    resized = cv2.resize(cropped, (new_w, new_h))
-
-    # random padding kleur zodat model niet leert grijs = achtergrond
-    # elke crop krijgt een andere willekeurige achtergrondkleur
-    r = random.randint(0, 255)
-    g = random.randint(0, 255)
-    b = random.randint(0, 255)
-    square = np.full((target_size, target_size, 3), [b, g, r], dtype=np.uint8)
-
-    # crop gecentreerd in het vierkant plakken
-    x_offset = (target_size - new_w) // 2
-    y_offset = (target_size - new_h) // 2
-    square[y_offset:y_offset + new_h, x_offset:x_offset + new_w] = resized
-
-    return square
-
+    # Direct stretchen naar 224x224 — geen padding nodig
+    return cv2.resize(cropped, (target_size, target_size))
 
 def process_dataset(image_dir, label_dir, output_dir, class_names):
-    """loop door alle afbeeldingen, lees de yolo labels,
-    knip elk object uit en sla op in een map per klassenaam"""
+    """
+    Verwerkt de hele dataset:
+    - Leest elke afbeelding en bijbehorend label bestand
+    - Crop elk gelabeld object eruit
+    - Slaat de crop op in een submap per klasse (bijv. output/QS/foto_0.jpg)
+    """
     os.makedirs(output_dir, exist_ok=True)
 
-    image_files = [f for f in os.listdir(image_dir)
-                   if f.lower().endswith(('.jpg', '.jpeg', '.png'))]
-
-    print(f"gevonden: {len(image_files)} afbeeldingen in {image_dir}")
-    skipped = 0
-    saved   = 0
+    # Haal alle afbeeldingsbestanden op
+    image_files = [f for f in os.listdir(image_dir) if f.lower().endswith(('.jpg', '.jpeg', '.png'))]
 
     for img_name in image_files:
-        label_name = os.path.splitext(img_name)[0] + ".txt"
-        label_path = os.path.join(label_dir, label_name)
-
-        if not os.path.exists(label_path):
-            skipped += 1
-            continue
-
-        image = cv2.imread(os.path.join(image_dir, img_name))
+        img_path = os.path.join(image_dir, img_name)
+        image    = cv2.imread(img_path)
         if image is None:
-            skipped += 1
             continue
 
-        with open(label_path, 'r') as f:
-            lines = f.readlines()
+        # Zoek het bijbehorende label bestand (zelfde naam, .txt extensie)
+        label_path = os.path.join(label_dir, os.path.splitext(img_name)[0] + ".txt")
 
-        for i, line in enumerate(lines):
-            line = line.strip()
-            if not line:
-                continue
+        if os.path.exists(label_path):
+            with open(label_path, 'r') as f:
+                for i, line in enumerate(f.readlines()):
+                    data = list(map(float, line.split()))
 
-            data     = list(map(float, line.split()))
-            class_id = int(data[0])
+                    # Zet class index om naar naam (bijv. 48 → "QS")
+                    class_name = class_names[int(data[0])].replace(" ", "_")
 
-            class_name = class_names[class_id] if class_id < len(class_names) else str(class_id)
-            class_name = class_name.replace(" ", "_")
+                    # Crop en schaal het object
+                    final_img = crop_and_resize(image, data, TARGET_SIZE)
 
-            final_img = crop_and_padding(image, data, TARGET_SIZE)
+                    if final_img is not None:
+                        # Sla op in submap per klasse
+                        out_path = os.path.join(output_dir, class_name)
+                        os.makedirs(out_path, exist_ok=True)
+                        cv2.imwrite(os.path.join(out_path, f"{img_name}_{i}.jpg"), final_img)
 
-            if final_img is not None:
-                label_dir_out = os.path.join(output_dir, class_name)
-                os.makedirs(label_dir_out, exist_ok=True)
-
-                base_name = os.path.splitext(img_name)[0]
-                save_path = os.path.join(label_dir_out, f"{base_name}_{i}.jpg")
-                cv2.imwrite(save_path, final_img)
-                saved += 1
-
-    print(f"klaar! {saved} crops opgeslagen in '{output_dir}'")
-    print(f"overgeslagen: {skipped} afbeeldingen (geen label of onleesbaar)")
-
+    print("Klaar met croppen!")
 
 if __name__ == "__main__":
-    class_names = load_class_names(YAML_PATH)
-    print(f"geladen klassen ({len(class_names)}): {class_names}")
-    process_dataset(IMAGE_DIR, LABEL_DIR, OUTPUT_DIR, class_names)
+    names = load_class_names(YAML_PATH)
+    process_dataset(IMAGE_DIR, LABEL_DIR, OUTPUT_DIR, names)
