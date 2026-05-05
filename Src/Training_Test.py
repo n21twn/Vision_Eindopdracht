@@ -10,10 +10,10 @@ from tensorflow.keras.callbacks import EarlyStopping
 
 # --- Paden instellen ---
 BASE_DIR  = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SPLIT_DIR = os.path.join(BASE_DIR, "object_crops_split")  # map met 2 klassen: rood / zwart
+SPLIT_DIR = os.path.join(BASE_DIR, "object_crops_split_2")  # map met 2 klassen: rood / zwart
 
 IMG_SIZE   = 224
-BATCH_SIZE = 16
+BATCH_SIZE = 32
 
 # --- Data augmentatie ---
 # Augmentatie zorgt voor meer variatie in de traindata
@@ -62,14 +62,14 @@ model = Sequential([
     GlobalAveragePooling2D(),          # verkleint de feature map naar één vector
     Dropout(0.3),                      # voorkomt overfitting
     Dense(128, activation="relu"),     # extra laag om patronen te leren
-    Dense(1, activation="sigmoid")     # <-- was softmax met num_classes, nu sigmoid voor binair
+    Dense(1, activation="softmax")     # <-- was softmax met num_classes, nu sigmoid voor binair
     # sigmoid geeft een waarde tussen 0 en 1:
     # dichter bij 0 = zwart, dichter bij 1 = rood
 ])
 
 # binary_crossentropy is de juiste verliesfunctie voor 2 klassen
 model.compile(optimizer="adam",
-              loss="binary_crossentropy",  # <-- was "categorical_crossentropy"
+              loss="categorical_crossentropy",  # <-- was "binary_crossentropy"
               metrics=["accuracy"])
 
 # --- EarlyStopping ---
@@ -112,5 +112,5 @@ plt.legend(loc='upper right')
 plt.show()
 
 # --- Model opslaan ---
-model.save(os.path.join(BASE_DIR, "model_binair.keras"))
-print("\nModel opgeslagen als model_binair.keras")
+model.save(os.path.join(BASE_DIR, "model_symbols.keras"))
+print("\nModel opgeslagen als model_symbols.keras")
