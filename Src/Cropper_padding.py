@@ -9,7 +9,7 @@ BASE_DIR    = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 YAML_PATH   = os.path.join(BASE_DIR, "Dataset2", "data.yaml") #De YAML met class names
 IMAGE_DIR   = os.path.join(BASE_DIR, "Dataset2", "train", "images") # De originele foto's
 LABEL_DIR   = os.path.join(BASE_DIR, "Dataset2", "train", "labels") # De YOLO-annotaties (zelfde naam als foto, maar .txt)
-OUTPUT_DIR  = os.path.join(BASE_DIR, "object_crops_2") # Waar de gecropte objecten en achtergrond-crops worden opgeslagen.
+OUTPUT_DIR  = os.path.join(BASE_DIR, "object_crops_padding") # Waar de gecropte objecten en achtergrond-crops worden opgeslagen.
 
 TARGET_SIZE = 224
 BG_PER_IMG  = 3  # Hoeveel achtergrond-crops per originele foto

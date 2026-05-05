@@ -8,7 +8,7 @@ BASE_DIR    = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # Roo
 YAML_PATH   = os.path.join(BASE_DIR, "Dataset2", "data.yaml")              # YOLO class namen
 IMAGE_DIR   = os.path.join(BASE_DIR, "Dataset2", "train", "images")        # Bronafbeeldingen
 LABEL_DIR   = os.path.join(BASE_DIR, "Dataset2", "train", "labels")        # YOLO annotaties (.txt)
-OUTPUT_DIR  = os.path.join(BASE_DIR, "object_crops_2")                     # Output map per klasse
+OUTPUT_DIR  = os.path.join(BASE_DIR, "object_crops_stretch")                 # Output map per klasse
 
 TARGET_SIZE = 224  # MobileNetV2 verwacht 224x224 pixels
 
