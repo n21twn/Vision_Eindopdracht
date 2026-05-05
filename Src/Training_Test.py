@@ -37,14 +37,14 @@ train_data = train_gen.flow_from_directory(
     os.path.join(SPLIT_DIR, "train"),
     target_size=(IMG_SIZE, IMG_SIZE),
     batch_size=BATCH_SIZE,
-    class_mode="binary"        # <-- was "categorical", nu "binary" voor 2 klassen
+    class_mode="categorical"        # <-- was "categorical", nu "binary" voor 2 klassen
 )
 
 val_data = val_gen.flow_from_directory(
     os.path.join(SPLIT_DIR, "val"),
     target_size=(IMG_SIZE, IMG_SIZE),
     batch_size=BATCH_SIZE,
-    class_mode="binary"        # <-- zelfde aanpassing
+    class_mode="categorical"        # <-- zelfde aanpassing
 )
 
 print(f"Klassen gevonden: {train_data.class_indices}")  # toont {'rood': 0, 'zwart': 1}
@@ -62,7 +62,7 @@ model = Sequential([
     GlobalAveragePooling2D(),          # verkleint de feature map naar één vector
     Dropout(0.3),                      # voorkomt overfitting
     Dense(128, activation="relu"),     # extra laag om patronen te leren
-    Dense(1, activation="softmax")     # <-- was softmax met num_classes, nu sigmoid voor binair
+    Dense(4, activation="softmax")     # <-- was softmax met num_classes, nu sigmoid voor binair
     # sigmoid geeft een waarde tussen 0 en 1:
     # dichter bij 0 = zwart, dichter bij 1 = rood
 ])
