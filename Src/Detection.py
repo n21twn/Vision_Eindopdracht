@@ -265,4 +265,4 @@ def classify_card(image_path):
 
 
 # --- Programma starten ---
-classify_card(os.path.join(BASE_DIR, "object_crops_split_3", "test", "Three", "038542874_jpg.rf.4681a67a93686d26874fb71295e2ed33.jpg_2.jpg"))
+classify_card(os.path.join(BASE_DIR, "Src", "test2.jpeg"))

@@ -20,12 +20,13 @@ BATCH_SIZE = 16
 # zodat het model robuuster wordt voor echte foto's
 train_gen = ImageDataGenerator(
     rescale=1./255,            # pixelwaarden van 0-255 naar 0.0-1.0
-    # rotation_range=10,         # willekeurige rotatie tot 10 graden
-    brightness_range=[0.6, 1.4],  # simuleer verschillende belichtingen
-    # zoom_range=0.15,           # simuleer verschillende afstanden
-    width_shift_range=0.1,     # kleine horizontale verschuiving
-    height_shift_range=0.1,    # kleine verticale verschuiving
-    horizontal_flip=False      # kaarten niet spiegelen (symbolen veranderen dan)
+    rotation_range=180,         # willekeurige rotatie tot 10 graden
+    brightness_range=[0.2, 1.8],  # simuleer verschillende belichtingen
+    zoom_range=0.4,
+    shear_range=0.3,           # simuleer verschillende afstanden
+    width_shift_range=0.2,     # kleine horizontale verschuiving
+    height_shift_range=0.2,    # kleine verticale verschuiving
+    channel_shift_range=50    # kleine verandering in kanalen (kleur)
 )
 
 # Validatiedata alleen normaliseren, geen augmentatie
