@@ -10,7 +10,7 @@ from tensorflow.keras.callbacks import EarlyStopping
 
 # --- Paden instellen ---
 BASE_DIR  = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SPLIT_DIR = os.path.join(BASE_DIR, "object_crops_split_2")  # map met 2 klassen: rood / zwart
+SPLIT_DIR = os.path.join(BASE_DIR, "object_crops_split")  # map met 2 klassen: rood / zwart
 
 IMG_SIZE   = 224
 BATCH_SIZE = 32
@@ -112,5 +112,5 @@ plt.legend(loc='upper right')
 plt.show()
 
 # --- Model opslaan ---
-model.save(os.path.join(BASE_DIR, "model_symbols.keras"))
-print("\nModel opgeslagen als model_symbols.keras")
+model.save(os.path.join(BASE_DIR, "model_symbols_filtered.keras"))
+print("\nModel opgeslagen als model_symbols_filtered.keras")

@@ -1,11 +1,11 @@
 # Dataset
 Dataset2/
-object_crops/
 object_crops_split/
 object_crops_split_2/
 object_crops_padding/
 object_crops_stretch/
 object_crops_binairy/
 object_crops_symbols/
+object_crops_symbols_filtered/
 Test.py
 .vscode/

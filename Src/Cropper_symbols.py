@@ -7,7 +7,7 @@ BASE_DIR   = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 YAML_PATH  = os.path.join(BASE_DIR, "Dataset2", "data.yaml")
 IMAGE_DIR  = os.path.join(BASE_DIR, "Dataset2", "train", "images")
 LABEL_DIR  = os.path.join(BASE_DIR, "Dataset2", "train", "labels")
-OUTPUT_DIR = os.path.join(BASE_DIR, "object_crops_symbols")  # aparte map voor symbool data
+OUTPUT_DIR = os.path.join(BASE_DIR, "object_crops_symbols_filtered")  # aparte map voor symbool data
 
 TARGET_SIZE = 224  # MobileNetV2 verwacht 224x224 pixels
 
@@ -42,9 +42,18 @@ def kaart_naar_kleur(class_name):
     elif class_name in CLUB:
         return "Club"
     else:
-        # Onbekende klasse overslaan (bijv. joker of fout label)
         return None
+    
+def add_filter(image):
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
+    _, otsu = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
+    morph  = cv2.morphologyEx(otsu, cv2.MORPH_CLOSE, kernel)
+    morph  = cv2.morphologyEx(morph, cv2.MORPH_OPEN,  kernel)
+
+    return cv2.cvtColor(morph, cv2.COLOR_GRAY2BGR)  # terug naar BGR voor consistente opslag
 
 def crop_and_resize(image, yolo_bbox, target_size=224):
     """
@@ -73,8 +82,9 @@ def crop_and_resize(image, yolo_bbox, target_size=224):
         return None
 
     # Direct stretchen naar 224x224 — geen padding nodig
-    return cv2.resize(cropped, (target_size, target_size))
+    resized = cv2.resize(cropped, (target_size, target_size))
 
+    return add_filter(resized)  # filter toevoegen voor betere herkenning
 
 def process_dataset(image_dir, label_dir, output_dir, class_names):
     """
@@ -90,9 +100,12 @@ def process_dataset(image_dir, label_dir, output_dir, class_names):
     image_files = [f for f in os.listdir(image_dir)
                    if f.lower().endswith(('.jpg', '.jpeg', '.png'))]
 
+    tellers = {"Diament": 0, "Spade": 0, "Heart": 0, "Club": 0}
+    
     for img_name in image_files:
         img_path = os.path.join(image_dir, img_name)
-        image    = cv2.imread(img_path)
+        image = cv2.imread(img_path)
+
         if image is None:
             continue
 
@@ -106,10 +119,9 @@ def process_dataset(image_dir, label_dir, output_dir, class_names):
 
                     # Zet class index om naar kaartnaam (bijv. 48 → "QS")
                     class_name = class_names[int(data[0])].replace(" ", "_")
-
+                    symbol  = kaart_naar_kleur(class_name)
                     # Zet kaartnaam om naar rood of zwart
-                    kleur = kaart_naar_kleur(class_name)
-                    if kleur is None:
+                    if symbol is None:
                         continue  # onbekende klasse overslaan
 
                     # Crop en schaal het object
@@ -118,11 +130,14 @@ def process_dataset(image_dir, label_dir, output_dir, class_names):
                         continue
 
                     # Sla op in submap per kleur (rood of zwart)
-                    out_path = os.path.join(output_dir, kleur)
+                    out_path = os.path.join(output_dir, symbol)
                     os.makedirs(out_path, exist_ok=True)
                     cv2.imwrite(os.path.join(out_path, f"{img_name}_{i}.jpg"), final_img)
-    print(f"Klaar met croppen!")
+                    tellers[symbol] += 1
 
+    print(f"Klaar met croppen!")
+    for symbol, count in tellers.items():
+        print(f"{symbol}: {count} crops")
 
 if __name__ == "__main__":
     names = load_class_names(YAML_PATH)
