@@ -3,26 +3,41 @@ import numpy as np
 import tensorflow as tf
 import os
 
-
+# ------------------------------------------------------------------ #
+#  SETUP — paden en model inladen                                      #
+# ------------------------------------------------------------------ #
 
 # Zoek automatisch de root map van het project
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # Pad naar het getrainde model en de traindata (voor klassenamen)
-MODEL_PATH = os.path.join(BASE_DIR, "model_zonder_filters.keras")
-TRAIN_DIR  = os.path.join(BASE_DIR, "object_crops_split_2", "train")
+MODEL_PATH = os.path.join(BASE_DIR, "model_numbers_filtered.keras")
+TRAIN_DIR  = os.path.join(BASE_DIR, "object_crops_split_3", "train")
 
 # Model inladen
 print("Model wordt geladen...")
 model = tf.keras.models.load_model(MODEL_PATH)
 
 # Klassenamen ophalen uit de trainmap (gesorteerde mapnamen = klassenamen)
+# Bijvoorbeeld: ['10C', '10D', ..., 'QS', 'background']
 class_names = sorted(os.listdir(TRAIN_DIR))
 
 
-
+# ------------------------------------------------------------------ #
+#  STAP 1 — Kaart vinden in de foto                                   #
+#                                                                      #
 #  Een speelkaart is wit. We zoeken naar witte pixels in de foto      #
 #  en groeperen die samen om de kaart te vinden.                      #
+# ------------------------------------------------------------------ #
+def apply_filter(image):
+    gray   = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    _, otsu = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
+    morph  = cv2.morphologyEx(otsu, cv2.MORPH_CLOSE, kernel)
+    morph  = cv2.morphologyEx(morph, cv2.MORPH_OPEN,  kernel)
+
+    return cv2.cvtColor(morph, cv2.COLOR_GRAY2BGR)
+
 
 def find_card_bbox(img):
     """
@@ -57,10 +72,10 @@ def find_card_bbox(img):
         return None  # Geen witte gebieden gevonden
 
     # Filter kleine contours weg — de kaart moet minimaal 0.5% van het beeld zijn
-    # min_area = sh * sw * 0.005
-    # big_cnts = [c for c in contours if cv2.contourArea(c) > min_area]
-    # if not big_cnts:
-    #     return None
+    min_area = sh * sw * 0.005
+    big_cnts = [c for c in contours if cv2.contourArea(c) > min_area]
+    if not big_cnts:
+        return None
 
     # Combineer alle grote witte vlekken tot één geheel via convex hull
     # Dit werkt ook als de kaart gedeeltelijk in schaduw ligt en in stukken is gesneden
@@ -80,16 +95,13 @@ def find_card_bbox(img):
     return (int(x * inv), int(y * inv), int(w * inv), int(h * inv)), hull, scale
 
 
-# Kaart uitsnijden en rechtop zetten
+# ------------------------------------------------------------------ #
+#  STAP 2 — Kaart uitsnijden en rechtop zetten                        #
+# ------------------------------------------------------------------ #
 
 def extract_card(img, bbox_result):
-    """
-    Snijdt de kaart uit de originele foto en zorgt dat hij rechtop staat
-    met de kaarthoek (Q♠ symbool) bovenaan.
-    """
     (x, y, w, h), _, _ = bbox_result
 
-    # Voeg een kleine rand toe zodat de kaartrand volledig zichtbaar is
     margin = 10
     x1 = max(0, x - margin)
     y1 = max(0, y - margin)
@@ -98,85 +110,69 @@ def extract_card(img, bbox_result):
 
     card = img[y1:y2, x1:x2]
 
-    # Draai de kaart zodat hij altijd staand is (hoogte > breedte)
+    # Zorg dat kaart staand is
     if card.shape[1] > card.shape[0]:
         card = cv2.rotate(card, cv2.ROTATE_90_CLOCKWISE)
 
-    h, w = card.shape[:2]
-
-    # Bepaal welke kant boven is door te kijken waar de meeste witte pixels zitten
-    # De kaarthoek (met cijfer + symbool) heeft een witte achtergrond
-    top_strip = card[0:int(h * 0.20), :]   # bovenste 20% van de kaart
-    bot_strip = card[int(h * 0.80):,   :]  # onderste 20% van de kaart
-
-    def white_score(region):
-        """Tel het aantal witte pixels in een gebied."""
-        hsv  = cv2.cvtColor(region, cv2.COLOR_BGR2HSV)
-        mask = cv2.inRange(hsv, np.array([0, 0, 200]), np.array([180, 30, 255]))
-        return np.sum(mask > 0)
-
-    top_score = white_score(top_strip)
-    bot_score = white_score(bot_strip)
-    print(f"Wit-score top={top_score} bot={bot_score}")
-
-    # Als de onderkant witter is staat de kaart ondersteboven → draai 180°
-    if bot_score > top_score:
-        card = cv2.rotate(card, cv2.ROTATE_180)
-        print("Kaart 180° gedraaid")
-
-    return card
+    return card  # geen wit-score meer, geen 180° draai
 
 
-#  De classifier is getraind op de hoek van de kaart (klein stukje met het cijfer/letter en het symbool). 
-#snijden de beste hoek uit en schalen die naar 224x224 voor het model. 
+# ------------------------------------------------------------------ #
+#  STAP 3 — Hoek van de kaart uitsnijden                              #
+#                                                                      #
+#  De classifier is getraind op de hoek van de kaart (klein stukje    #
+#  met het cijfer/letter en het symbool). We snijden de beste hoek    #
+#  uit en schalen die naar 224x224 voor het model.                    #
+# ------------------------------------------------------------------ #
 
-#!!!!!!!!!!!!!!! Verder aan werken want werkt nog niet
-# def crop_corner(card_img, target_size=224):
-#     """
-#     Kiest de beste hoek van de kaart (meeste wit, minste kleur)
-#     en schaalt die naar target_size x target_size pixels.
-#     """
-#     h, w = card_img.shape[:2]
+def crop_corner(card_img, target_size=224):
+    """
+    Kiest de beste hoek van de kaart (meeste wit, minste kleur)
+    en schaalt die naar target_size x target_size pixels.
+    """
+    h, w = card_img.shape[:2]
 
-#     # Kaart altijd staand maken
-#     if w > h:
-#         card_img = cv2.rotate(card_img, cv2.ROTATE_90_CLOCKWISE)
-#         h, w = card_img.shape[:2]
+    # Kaart altijd staand maken
+    if w > h:
+        card_img = cv2.rotate(card_img, cv2.ROTATE_90_CLOCKWISE)
+        h, w = card_img.shape[:2]
 
-#     # Bereken de grootte van een hoek (30% van de kaart)
-#     cw = int(w * 0.30)
-#     ch = int(h * 0.30)
+    # Bereken de grootte van een hoek (30% van de kaart)
+    cw = int(w * 0.30)
+    ch = int(h * 0.30)
 
-#     # Snijd alle 4 hoeken uit
-#     candidates = {
-#         "TL": card_img[0:ch,   0:cw  ],   # top-links
-#         "TR": card_img[0:ch,   w-cw:w],   # top-rechts
-#         "BL": card_img[h-ch:h, 0:cw  ],   # onder-links
-#         "BR": card_img[h-ch:h, w-cw:w],   # onder-rechts
-#     }
+    # Snijd alle 4 hoeken uit
+    candidates = {
+        "TL": card_img[0:ch,   0:cw  ],   # top-links
+        "TR": card_img[0:ch,   w-cw:w],   # top-rechts
+        "BL": card_img[h-ch:h, 0:cw  ],   # onder-links
+        "BR": card_img[h-ch:h, w-cw:w],   # onder-rechts
+    }
 
-#     def corner_score(crop):
-#         """
-#         Bereken hoe waarschijnlijk het is dat dit de kaarthoek is.
-#         Kaarthoek = veel wit (achtergrond) + weinig kleur (geen kaartfiguur).
-#         Score = witte pixels minus gekleurde pixels.
-#         """
-#         hsv   = cv2.cvtColor(crop, cv2.COLOR_BGR2HSV)
-#         wit   = cv2.inRange(hsv, np.array([0,  0,  180]), np.array([180, 50,  255]))
-#         kleur = cv2.inRange(hsv, np.array([0,  80, 80 ]), np.array([180, 255, 255]))
-#         return np.sum(wit > 0) - np.sum(kleur > 0)
+    def corner_score(crop):
+        """
+        Bereken hoe waarschijnlijk het is dat dit de kaarthoek is.
+        Kaarthoek = veel wit (achtergrond) + weinig kleur (geen kaartfiguur).
+        Score = witte pixels minus gekleurde pixels.
+        """
+        hsv   = cv2.cvtColor(crop, cv2.COLOR_BGR2HSV)
+        wit   = cv2.inRange(hsv, np.array([0,  0,  180]), np.array([180, 50,  255]))
+        kleur = cv2.inRange(hsv, np.array([0,  80, 80 ]), np.array([180, 255, 255]))
+        return np.sum(wit > 0) - np.sum(kleur > 0)
 
-#     # Bereken de score voor elke hoek en kies de beste
-#     scores = {k: corner_score(v) for k, v in candidates.items()}
-#     best_k = max(scores, key=scores.get)
-#     print(f"Hoek scores: { {k: int(v) for k, v in scores.items()} } → kies {best_k}")
+    # Bereken de score voor elke hoek en kies de beste
+    scores = {k: corner_score(v) for k, v in candidates.items()}
+    best_k = max(scores, key=scores.get)
+    print(f"Hoek scores: { {k: int(v) for k, v in scores.items()} } → kies {best_k}")
 
-#     # Schaal de gekozen hoek naar 224x224 (zelfde als traindata)
-#     corner = candidates[best_k]
-#     return cv2.resize(corner, (target_size, target_size))
+    # Schaal de gekozen hoek naar 224x224 (zelfde als traindata)
+    # corner = candidates[best_k]
+    corner = card_img[0:ch, 0:cw]
+    return apply_filter(cv2.resize(corner, (target_size, target_size)))
 
-
-
+# ------------------------------------------------------------------ #
+#  HOOFD-FUNCTIE — voer de volledige detectie uit op één foto         #
+# ------------------------------------------------------------------ #
 
 def classify_card(image_path):
     """Laadt een foto, vindt de kaart, en laat het model een voorspelling doen."""
@@ -187,6 +183,7 @@ def classify_card(image_path):
         print("Bestand niet gevonden.")
         return
 
+    # --- Stap 1: kaart lokaliseren ---
     result = find_card_bbox(img)
 
     if result is not None:
@@ -202,32 +199,49 @@ def classify_card(image_path):
         if card_img.shape[1] > card_img.shape[0]:
             card_img = cv2.rotate(card_img, cv2.ROTATE_90_CLOCKWISE)
 
+    # --- Stap 2: hoek uitsnijden ---
     corner_crop = crop_corner(card_img)
 
+    # --- Stap 3: voorspelling maken ---
     # Zet BGR om naar RGB (model is getraind op RGB)
-    img_rgb    = cv2.cvtColor(corner_crop, cv2.COLOR_BGR2RGB)
-    # Normaliseer pixelwaarden van 0-255 naar 0.0-1.0
-    input_data = img_rgb.astype('float32') / 255.0
-    # Voeg een batch-dimensie toe (model verwacht [batch, hoogte, breedte, kanalen])
-    input_data = np.expand_dims(input_data, axis=0)
+    best_label  = None
+    best_conf   = 0
+    best_corner = corner_crop
 
-    # Voorspelling uitvoeren
-    preds = model.predict(input_data, verbose=0)[0]
-    idx   = np.argmax(preds)   # index van de hoogste score
-    label = class_names[idx]   # omzetten naar klassenaam
-    conf  = preds[idx]         # zekerheid (0.0 - 1.0)
+    for rot in [None, cv2.ROTATE_90_CLOCKWISE,
+                cv2.ROTATE_180, cv2.ROTATE_90_COUNTERCLOCKWISE]:
+
+        rotated  = cv2.rotate(corner_crop, rot) if rot is not None else corner_crop.copy()
+        filtered = apply_filter(rotated)
+        inp      = np.expand_dims(
+                    cv2.cvtColor(filtered, cv2.COLOR_BGR2RGB).astype('float32') / 255.0, 0)
+        preds    = model.predict(inp, verbose=0)[0]
+        idx      = np.argmax(preds)
+        conf     = preds[idx]
+        print(f"  Rotatie {rot}: {class_names[idx]} ({conf*100:.1f}%)")
+
+        if conf > best_conf:
+            best_conf   = conf
+            best_label  = class_names[idx]
+            best_corner = filtered
+
+    label       = best_label
+    conf        = best_conf
+    corner_crop = best_corner
 
     print("-" * 30)
     print(f"MODEL VOORSPELLING: {label}")
     print(f"ZEKERHEID:          {conf * 100:.2f}%")
     print("-" * 30)
 
+    # --- Debug: toon 3 vensters voor visuele controle ---
     def show_resized(title, image, max_h=600):
         """Toon een afbeelding op maximaal max_h pixels hoog."""
         h, w  = image.shape[:2]
         scale = min(1.0, max_h / h)
         cv2.imshow(title, cv2.resize(image, (int(w * scale), int(h * scale))))
 
+    # Venster 1: originele foto met gevonden kaart aangegeven
     vis = img.copy()
     if result is not None:
         (x, y, w, h), hull, scale = result
@@ -236,15 +250,19 @@ def classify_card(image_path):
         cv2.rectangle(vis, (x, y), (x + w, y + h), (0, 0, 255), 2)  # rode bbox
     show_resized("1. Gevonden kaart", vis)
 
-    
+    # Venster 2: uitgesneden en rechtopgezette kaart
     show_resized("2. Kaart crop", card_img)
 
+    # Venster 3: de hoek-crop die het model als input krijgt
     debug_corner = cv2.resize(corner_crop.copy(), (300, 300))
     cv2.putText(debug_corner, f"{label} {conf * 100:.0f}%", (5, 25),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
     cv2.imshow("3. Input voor de AI (hoek-crop)", debug_corner)
 
+    # Wacht op toetsdruk voordat de vensters sluiten
     cv2.waitKey(0)
     cv2.destroyAllWindows()
 
-classify_card(os.path.join(BASE_DIR, "Src", "test.jpeg"))
+
+# --- Programma starten ---
+classify_card(os.path.join(BASE_DIR, "object_crops_split_3", "test", "Three", "038542874_jpg.rf.4681a67a93686d26874fb71295e2ed33.jpg_2.jpg"))

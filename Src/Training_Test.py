@@ -10,19 +10,19 @@ from tensorflow.keras.callbacks import EarlyStopping
 
 # --- Paden instellen ---
 BASE_DIR  = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SPLIT_DIR = os.path.join(BASE_DIR, "object_crops_split")  # map met 2 klassen: rood / zwart
+SPLIT_DIR = os.path.join(BASE_DIR, "object_crops_split_3")  # map met 2 klassen: rood / zwart
 
 IMG_SIZE   = 224
-BATCH_SIZE = 32
+BATCH_SIZE = 16
 
 # --- Data augmentatie ---
 # Augmentatie zorgt voor meer variatie in de traindata
 # zodat het model robuuster wordt voor echte foto's
 train_gen = ImageDataGenerator(
     rescale=1./255,            # pixelwaarden van 0-255 naar 0.0-1.0
-    rotation_range=10,         # willekeurige rotatie tot 10 graden
+    # rotation_range=10,         # willekeurige rotatie tot 10 graden
     brightness_range=[0.6, 1.4],  # simuleer verschillende belichtingen
-    zoom_range=0.15,           # simuleer verschillende afstanden
+    # zoom_range=0.15,           # simuleer verschillende afstanden
     width_shift_range=0.1,     # kleine horizontale verschuiving
     height_shift_range=0.1,    # kleine verticale verschuiving
     horizontal_flip=False      # kaarten niet spiegelen (symbolen veranderen dan)
@@ -62,7 +62,7 @@ model = Sequential([
     GlobalAveragePooling2D(),          # verkleint de feature map naar één vector
     Dropout(0.3),                      # voorkomt overfitting
     Dense(128, activation="relu"),     # extra laag om patronen te leren
-    Dense(4, activation="softmax")     # <-- was softmax met num_classes, nu sigmoid voor binair
+    Dense(13, activation="softmax")     # <-- was softmax met num_classes, nu sigmoid voor binair
     # sigmoid geeft een waarde tussen 0 en 1:
     # dichter bij 0 = zwart, dichter bij 1 = rood
 ])
@@ -112,5 +112,5 @@ plt.legend(loc='upper right')
 plt.show()
 
 # --- Model opslaan ---
-model.save(os.path.join(BASE_DIR, "model_symbols_filtered.keras"))
-print("\nModel opgeslagen als model_symbols_filtered.keras")
+model.save(os.path.join(BASE_DIR, "model_numbers_filtered.keras"))
+print("\nModel opgeslagen als model_numbers_filtered.keras")
