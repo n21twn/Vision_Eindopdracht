@@ -10,10 +10,10 @@ from tensorflow.keras.callbacks import EarlyStopping
 
 # --- Paden instellen ---
 BASE_DIR  = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SPLIT_DIR = os.path.join(BASE_DIR, "object_crops_split_3")  # map met 2 klassen: rood / zwart
+SPLIT_DIR = os.path.join(BASE_DIR, "object_crops_split")  # map met 2 klassen: rood / zwart
 
 IMG_SIZE   = 224
-BATCH_SIZE = 16
+BATCH_SIZE = 32
 
 # --- Data augmentatie ---
 # Augmentatie zorgt voor meer variatie in de traindata
@@ -48,6 +48,8 @@ val_data = val_gen.flow_from_directory(
     class_mode="categorical"        # <-- zelfde aanpassing
 )
 
+
+
 print(f"Klassen gevonden: {train_data.class_indices}")  # toont {'rood': 0, 'zwart': 1}
 
 # --- Model opbouw ---
@@ -56,33 +58,35 @@ print(f"Klassen gevonden: {train_data.class_indices}")  # toont {'rood': 0, 'zwa
 base_model = MobileNetV2(input_shape=(IMG_SIZE, IMG_SIZE, 3),
                          include_top=False,
                          weights="imagenet")
-base_model.trainable = False  # voorgetrainde lagen niet aanpassen
+base_model.trainable = True
+for layer in base_model.layers[:-20]:
+    layer.trainable = False
+
+# base_model.trainable = False  # voorgetrainde lagen niet aanpassen
 
 model = Sequential([
-    base_model,                        # voorgetraind MobileNetV2
-    GlobalAveragePooling2D(),          # verkleint de feature map naar één vector
-    Dropout(0.3),                      # voorkomt overfitting
-    Dense(128, activation="relu"),     # extra laag om patronen te leren
-    Dense(13, activation="softmax")     # <-- was softmax met num_classes, nu sigmoid voor binair
-    # sigmoid geeft een waarde tussen 0 en 1:
-    # dichter bij 0 = zwart, dichter bij 1 = rood
+    base_model,
+    GlobalAveragePooling2D(),
+    Dense(256, activation="relu"),
+    Dense(128, activation="relu"),
+    Dense(4, activation="softmax")
 ])
 
 # binary_crossentropy is de juiste verliesfunctie voor 2 klassen
-model.compile(optimizer="adam",
+model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.00001),
               loss="categorical_crossentropy",  # <-- was "binary_crossentropy"
               metrics=["accuracy"])
 
 # --- EarlyStopping ---
 # Stopt automatisch als het model niet meer verbetert na 5 epochs
-early_stop = EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True)
+early_stop = EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True)
 
 # --- Training starten ---
 print("\nStart training op CPU...")
 history = model.fit(
     train_data,
     validation_data=val_data,
-    epochs=40,
+    epochs=60,
     callbacks=[early_stop],
     verbose=1
 )
@@ -112,6 +116,21 @@ plt.legend(loc='upper right')
 
 plt.show()
 
+test_gen = ImageDataGenerator(rescale=1./255)
+
+test_data = test_gen.flow_from_directory(
+    os.path.join(SPLIT_DIR, "test"),
+    target_size=(IMG_SIZE, IMG_SIZE),
+    batch_size=BATCH_SIZE,
+    class_mode="categorical",
+    shuffle=False
+)
+
+test_loss, test_accuracy = model.evaluate(test_data, verbose=1)
+print(f"\nTest accuracy: {test_accuracy * 100:.2f}%")
+print(f"Test loss:     {test_loss:.4f}")
+
+
 # --- Model opslaan ---
-model.save(os.path.join(BASE_DIR, "model_numbers_filtered.keras"))
-print("\nModel opgeslagen als model_numbers_filtered.keras")
+model.save(os.path.join(BASE_DIR, "model_symbols_filtered.keras"))
+print("\nModel opgeslagen als model_symbols_filtered.keras")

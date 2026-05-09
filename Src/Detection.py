@@ -11,8 +11,8 @@ import os
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # Pad naar het getrainde model en de traindata (voor klassenamen)
-MODEL_PATH = os.path.join(BASE_DIR, "model_numbers_filtered.keras")
-TRAIN_DIR  = os.path.join(BASE_DIR, "object_crops_split_3", "train")
+MODEL_PATH = os.path.join(BASE_DIR, "model_symbols_filtered.keras")
+TRAIN_DIR  = os.path.join(BASE_DIR, "object_crops_split", "train")
 
 # Model inladen
 print("Model wordt geladen...")
@@ -166,8 +166,8 @@ def crop_corner(card_img, target_size=224):
     print(f"Hoek scores: { {k: int(v) for k, v in scores.items()} } → kies {best_k}")
 
     # Schaal de gekozen hoek naar 224x224 (zelfde als traindata)
-    # corner = candidates[best_k]
-    corner = card_img[0:ch, 0:cw]
+    corner = candidates[best_k]
+    # corner = card_img[0:ch, 0:cw]
     return apply_filter(cv2.resize(corner, (target_size, target_size)))
 
 # ------------------------------------------------------------------ #
@@ -265,4 +265,4 @@ def classify_card(image_path):
 
 
 # --- Programma starten ---
-classify_card(os.path.join(BASE_DIR, "Src", "test2.jpeg"))
+classify_card(os.path.join(BASE_DIR, "Src", "test3.jpeg"))
