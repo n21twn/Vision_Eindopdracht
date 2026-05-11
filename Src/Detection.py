@@ -6,8 +6,8 @@ import os
 
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-MODEL_PATH = os.path.join(BASE_DIR, "model_symbols_filtered.keras")
-TRAIN_DIR  = os.path.join(BASE_DIR, "object_crops_split", "train")
+MODEL_PATH = os.path.join(BASE_DIR, "model_numbers_filtered.keras")
+TRAIN_DIR  = os.path.join(BASE_DIR, "object_crops_split_3", "train")
 
 model = tf.keras.models.load_model(MODEL_PATH)
 # Klassenamen ophalen uit de trainmap (gesorteerde mapnamen = klassenamen)
@@ -314,4 +314,4 @@ def classify_card(image_path):
 # --- Programma starten ---
 # live_detection()
 # --- Programma starten ---
-classify_card(os.path.join(BASE_DIR, "Src", "test3.jpeg"))
+classify_card(os.path.join(BASE_DIR, "Src", "test.jpeg"))
