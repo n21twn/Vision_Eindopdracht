@@ -3,24 +3,19 @@ import numpy as np
 import tensorflow as tf
 import os
 
-# ------------------------------------------------------------------ #
-#  SETUP — paden en model inladen                                      #
-# ------------------------------------------------------------------ #
 
-# Zoek automatisch de root map van het project
+
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-
-# Pad naar het getrainde model en de traindata (voor klassenamen)
 MODEL_PATH = os.path.join(BASE_DIR, "model_symbols_filtered.keras")
 TRAIN_DIR  = os.path.join(BASE_DIR, "object_crops_split", "train")
 
-# Model inladen
-print("Model wordt geladen...")
 model = tf.keras.models.load_model(MODEL_PATH)
-
 # Klassenamen ophalen uit de trainmap (gesorteerde mapnamen = klassenamen)
-# Bijvoorbeeld: ['10C', '10D', ..., 'QS', 'background']
 class_names = sorted(os.listdir(TRAIN_DIR))
+
+
+
+
 
 
 # ------------------------------------------------------------------ #
@@ -224,7 +219,7 @@ def classify_card(image_path):
             best_conf   = conf
             best_label  = class_names[idx]
             best_corner = filtered
-
+    # return best_label, best_conf
     label       = best_label
     conf        = best_conf
     corner_crop = best_corner
@@ -263,6 +258,60 @@ def classify_card(image_path):
     cv2.waitKey(0)
     cv2.destroyAllWindows()
 
-
+ 
+# def live_detection():
+    cap = cv2.VideoCapture(0)
+ 
+    if not cap.isOpened():
+        print("Webcam niet gevonden!")
+        return
+ 
+    print("Live detectie gestart. Druk op 'q' om te stoppen.")
+ 
+    frame_count = 0
+    label       = "Zoeken..."
+    conf        = 0.0
+ 
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            break
+ 
+        # Elke 10 frames classificeren om CPU te sparen
+        if frame_count % 10 == 0:
+            result = find_card_bbox(frame)
+            if result is not None:
+                card_img    = extract_card(frame, result)
+                corner_crop = crop_corner(card_img)
+                label, conf = classify_card(corner_crop)
+            else:
+                label = "Geen kaart gevonden"
+                conf  = 0.0
+ 
+        # Bounding box en label tekenen op elk frame
+        result = find_card_bbox(frame)
+        if result is not None:
+            (x, y, w, h), hull, scale = result
+ 
+            # Groene bounding box om de kaart
+            cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
+ 
+            # Label met zekerheid boven de bounding box
+            tekst = f"{label} {conf * 100:.0f}%"
+            cv2.putText(frame, tekst, (x, y - 10),
+                        cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+ 
+        cv2.imshow("Live kaart detectie - druk Q om te stoppen", frame)
+        frame_count += 1
+ 
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+ 
+    cap.release()
+    cv2.destroyAllWindows()
+ 
+ 
+# --- Programma starten ---
+# live_detection()
 # --- Programma starten ---
 classify_card(os.path.join(BASE_DIR, "Src", "test3.jpeg"))
