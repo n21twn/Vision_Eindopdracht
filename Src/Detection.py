@@ -6,8 +6,8 @@ import os
 
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-MODEL_PATH = os.path.join(BASE_DIR, "model_numbers_filtered.keras")
-TRAIN_DIR  = os.path.join(BASE_DIR, "object_crops_split_3", "train")
+MODEL_PATH = os.path.join(BASE_DIR, "model_symbols_filtered.keras")
+TRAIN_DIR  = os.path.join(BASE_DIR, "object_crops_split", "train")
 
 model = tf.keras.models.load_model(MODEL_PATH)
 # Klassenamen ophalen uit de trainmap (gesorteerde mapnamen = klassenamen)
@@ -260,58 +260,62 @@ def classify_card(image_path):
 
  
 # def live_detection():
-    cap = cv2.VideoCapture(0)
+#     cap = cv2.VideoCapture(0)
  
-    if not cap.isOpened():
-        print("Webcam niet gevonden!")
-        return
+#     if not cap.isOpened():
+#         print("Webcam niet gevonden!")
+#         return
  
-    print("Live detectie gestart. Druk op 'q' om te stoppen.")
+#     print("Live detectie gestart. Druk op 'q' om te stoppen.")
  
-    frame_count = 0
-    label       = "Zoeken..."
-    conf        = 0.0
+#     frame_count = 0
+#     label       = "Zoeken..."
+#     conf        = 0.0
  
-    while True:
-        ret, frame = cap.read()
-        if not ret:
-            break
+#     while True:
+#         ret, frame = cap.read()
+#         if not ret:
+#             break
  
-        # Elke 10 frames classificeren om CPU te sparen
-        if frame_count % 10 == 0:
-            result = find_card_bbox(frame)
-            if result is not None:
-                card_img    = extract_card(frame, result)
-                corner_crop = crop_corner(card_img)
-                label, conf = classify_card(corner_crop)
-            else:
-                label = "Geen kaart gevonden"
-                conf  = 0.0
+#         # Elke 10 frames classificeren om CPU te sparen
+#         if frame_count % 10 == 0:
+#             result = find_card_bbox(frame)
+#             if result is not None:
+#                 card_img    = extract_card(frame, result)
+#                 corner_crop = crop_corner(card_img)
+#                 label, conf = classify_card(corner_crop)
+#             else:
+#                 label = "Geen kaart gevonden"
+#                 conf  = 0.0
  
-        # Bounding box en label tekenen op elk frame
-        result = find_card_bbox(frame)
-        if result is not None:
-            (x, y, w, h), hull, scale = result
+#         # Bounding box en label tekenen op elk frame
+#         result = find_card_bbox(frame)
+#         if result is not None:
+#             (x, y, w, h), hull, scale = result
  
-            # Groene bounding box om de kaart
-            cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
+#             # Groene bounding box om de kaart
+#             cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
  
-            # Label met zekerheid boven de bounding box
-            tekst = f"{label} {conf * 100:.0f}%"
-            cv2.putText(frame, tekst, (x, y - 10),
-                        cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+#             # Label met zekerheid boven de bounding box
+#             tekst = f"{label} {conf * 100:.0f}%"
+#             cv2.putText(frame, tekst, (x, y - 10),
+#                         cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
  
-        cv2.imshow("Live kaart detectie - druk Q om te stoppen", frame)
-        frame_count += 1
+#         cv2.imshow("Live kaart detectie - druk Q om te stoppen", frame)
+#         frame_count += 1
  
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
+#         if cv2.waitKey(1) & 0xFF == ord('q'):
+#             break
  
-    cap.release()
-    cv2.destroyAllWindows()
+#     cap.release()
+#     cv2.destroyAllWindows()
  
  
 # --- Programma starten ---
 # live_detection()
 # --- Programma starten ---
-classify_card(os.path.join(BASE_DIR, "Src", "test.jpeg"))
+classify_card(os.path.join(BASE_DIR, "Img_test", "card1.jpeg"))
+classify_card(os.path.join(BASE_DIR, "Img_test", "card2.jpeg"))
+classify_card(os.path.join(BASE_DIR, "Img_test", "card3.jpeg"))
+classify_card(os.path.join(BASE_DIR, "Img_test", "card4.jpeg"))
+classify_card(os.path.join(BASE_DIR, "Img_test", "card5.jpeg"))
