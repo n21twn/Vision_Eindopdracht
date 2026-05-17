@@ -11,7 +11,10 @@ object_crops_symbols_filtered/
 object_crops_numbers_filtered/
 object_crops_split_binairy/
 object_crops_split_symbols/
+object_crops_split_3/
+object_crops_split_symbols_filtered/
 Test.py
 ModelTester.py
 tijd_test.py
+training
 .vscode/
