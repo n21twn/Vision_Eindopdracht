@@ -11,7 +11,7 @@ OUTPUT_DIR = os.path.join(BASE_DIR, "object_crops_symbols_filtered")  # aparte m
 
 TARGET_SIZE = 224  # MobileNetV2 verwacht 224x224 pixels
 
-# --- Mapping van klasse naar rood of zwart ---
+
 # Harten (H) en Ruiten (D) zijn rood
 # Schoppen (S) en Klaveren (C) zijn zwart
 DIAMENT    = ['AD','2D','3D','4D','5D','6D','7D','8D','9D','10D','JD','QD','KD']
@@ -22,17 +22,17 @@ CLUB       = ['AC','2C','3C','4C','5C','6C','7C','8C','9C','10C','JC','QC','KC']
 
 
 def load_class_names(yaml_path):
-    """Laadt de klassenamen uit het YOLO data.yaml bestand."""
+    # Laadt de klassenamen uit het YOLO data.yaml bestand
     with open(yaml_path, 'r') as f:
         data = yaml.safe_load(f)
     return data['names']
 
 
 def kaart_naar_kleur(class_name):
-    """
-    Zet een kaartnaam om naar 'rood' of 'zwart'.
-    Geeft None terug als de kaartnaam niet herkend wordt.
-    """
+
+    # Zet een kaartnaam om naar 'rood' of 'zwart'.
+    # Geeft None terug als de kaartnaam niet herkend wordt.
+
     if class_name in DIAMENT:
         return "Diament"
     elif class_name in SPADE:
@@ -45,10 +45,13 @@ def kaart_naar_kleur(class_name):
         return None
     
 def add_filter(image):
+    # afbeelding omzetten naar grijswaarden
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
+    # Otsu's toepassen, automatisch drempel waarde op basis van histogram 
     _, otsu = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
 
+    # morfologische bewerkingen om ruis te verminderen en details te behouden
     kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
     morph  = cv2.morphologyEx(otsu, cv2.MORPH_CLOSE, kernel)
     morph  = cv2.morphologyEx(morph, cv2.MORPH_OPEN,  kernel)
@@ -56,11 +59,11 @@ def add_filter(image):
     return cv2.cvtColor(morph, cv2.COLOR_GRAY2BGR)  # terug naar BGR voor consistente opslag
 
 def crop_and_resize(image, yolo_bbox, target_size=224):
-    """
-    Snijdt één object uit de afbeelding op basis van een YOLO bounding box
-    en schaalt het direct naar target_size x target_size pixels.
-    YOLO bbox formaat: [class, x_center, y_center, width, height] (genormaliseerd 0-1)
-    """
+
+    # Snijdt één object uit de afbeelding op basis van een YOLO bounding box
+    # en schaalt het direct naar target_size x target_size pixels.
+    # YOLO bbox formaat: [class, x_center, y_center, width, height] (genormaliseerd 0-1)
+
     h_img, w_img, _ = image.shape
 
     # Zet genormaliseerde YOLO coördinaten om naar absolute pixels
@@ -87,13 +90,13 @@ def crop_and_resize(image, yolo_bbox, target_size=224):
     return add_filter(resized)  # filter toevoegen voor betere herkenning
 
 def process_dataset(image_dir, label_dir, output_dir, class_names):
-    """
-    Verwerkt de hele dataset:
-    - Leest elke afbeelding en bijbehorend label bestand
-    - Crop elk gelabeld object eruit
-    - Zet de kaartnaam om naar 'rood' of 'zwart'
-    - Slaat de crop op in een submap per kleur (output/rood/ of output/zwart/)
-    """
+  
+    # Verwerkt de hele dataset:
+    # Leest elke afbeelding en bijbehorend label bestand
+    # Crop elk gelabeld object eruit
+    # Zet de kaartnaam om naar bijbehorende symbol 
+    # slaat de crop op in een submap per symbol (Diament, Spade, Heart, Club)
+
     os.makedirs(output_dir, exist_ok=True)
 
     # Haal alle afbeeldingsbestanden op

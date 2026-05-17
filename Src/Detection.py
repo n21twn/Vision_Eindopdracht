@@ -7,7 +7,7 @@ import os
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MODEL_PATH = os.path.join(BASE_DIR, "model_symbols_filtered.keras")
-TRAIN_DIR  = os.path.join(BASE_DIR, "object_crops_split", "train")
+TRAIN_DIR  = os.path.join(BASE_DIR, "object_crops_split_symbols", "train")
 
 model = tf.keras.models.load_model(MODEL_PATH)
 # Klassenamen ophalen uit de trainmap (gesorteerde mapnamen = klassenamen)

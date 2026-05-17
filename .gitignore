@@ -13,4 +13,5 @@ object_crops_split_binairy/
 object_crops_split_symbols/
 Test.py
 ModelTester.py
+tijd_test.py
 .vscode/

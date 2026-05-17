@@ -6,10 +6,10 @@ import shutil
 
 BASE_DIR   = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # Root
 # INPUT_DIR  = os.path.join(BASE_DIR, "object_crops")
-INPUT_DIR  = os.path.join(BASE_DIR, "object_crops_numbers_filtered")  # map met alle plaatjes, gesorteerd in submappen per klasse
+INPUT_DIR  = os.path.join(BASE_DIR, "object_crops_symbols")  # map met alle plaatjes, gesorteerd in submappen per klasse
 TEMP_DIR   = os.path.join(BASE_DIR, "object_crops_temp")  # tijdelijke map met max plaatjes
 # OUTPUT_DIR = os.path.join(BASE_DIR, "object_crops_split")
-OUTPUT_DIR = os.path.join(BASE_DIR, "object_crops_split_3")
+OUTPUT_DIR = os.path.join(BASE_DIR, "object_crops_split_symbols")  # map waar de gesplitste dataset komt, met submappen train/val/test en daarin weer submappen per klasse
 
 
 # 70% train, 20% validatie, 10% test
